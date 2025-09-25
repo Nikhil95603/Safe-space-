@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>SafeSpace — Student Mental Health (Final v2)</title>
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+  :root{
+    --brand: #0b5ed7;
+    --bg: #f3f8ff;
+    --text: #0f172a;
+    --card: #ffffff;
+    --muted: #6b7280;
+    --success: #16a34a;
+    --danger: #ef4444;
+  }
+  /* dark mode variables */
+  body.dark {
+    --bg: #071122;
+    --text: #ffffff;
+    --card: #0b1220;
+    --muted: #9aa6bf;
+    --brand: #4aa6ff;
+  }
+
+  *{box-sizing:border-box}
+  body {
+    margin:0; font-family: Inter, "Segoe UI", Roboto, Arial, sans-serif;
+    background: linear-gradient(135deg,var(--bg),#eefbf6); color:var(--text);
+    transition: background 0.25s, color 0.25s;
+    -webkit-font-smoothing:antialiased;
+  }
+
+  header {
+    display:flex; justify-content:space-between; align-items:center;
+    padding:12px 20px; background:var(--card); position:sticky; top:0; z-index:30;
+    border-bottom:1px solid rgba(0,0,0,0.05);
+  }
+  .brand { display:flex; align-items:center; gap:12px; }
+  .logo { width:44px; height:44px; border-radius:10px; background:linear-gradient(180deg,var(--brand),#0077cc); color:white; display:flex; align-items:center; justify-content:center; font-weight:800; box-shadow:0 8px 20px rgba(11,94,215,0.08); }
+  nav a { margin-left:14px; text-decoration:none; color:var(--brand); font-weight:600; }
+  .container { max-width:1100px; margin:24px auto; padding:0 18px; }
+
+  .hero {
+    display:grid; grid-template-columns:1fr 340px; gap:18px; align-items:center;
+    padding:28px; border-radius:12px; background: linear-gradient(90deg, rgba(11,94,215,0.06), rgba(6,195,139,0.03));
+    box-shadow:0 10px 28px rgba(11,94,215,0.06);
+  }
+  .hero h1 { margin:0; font-size:26px; color:var(--brand); }
+  .hero p { margin:8px 0 14px; color:var(--muted); }
+
+  section { margin-top:18px; background:var(--card); padding:18px; border-radius:12px; box-shadow:0 8px 24px rgba(2,6,23,0.03); transition: background 0.25s, color 0.25s; }
+  h2 { margin:0 0 12px; color:var(--brand); }
+  .muted { color:var(--muted); }
+
+  select, input[type="text"], input[type="number"], textarea, input[type="file"] {
+    width:100%; padding:8px; border:1px solid #e6edf7; border-radius:8px; margin-top:6px;
+    background:transparent; color:var(--text); transition: color 0.25s, background 0.25s, border-color 0.25s;
+  }
+  /* ensure inputs are visible in dark mode */
+  body.dark select, body.dark option, body.dark input, body.dark textarea, body.dark input[type="file"] {
+    color:#ffffff; background: #0f1724; border:1px solid rgba(255,255,255,0.06);
+  }
+  /* options explicit */
+  option { color:var(--text); background:var(--card); }
+
+  button { padding:8px 12px; border-radius:8px; border:none; background:var(--brand); color:white; cursor:pointer; margin:6px 4px 0 0; }
+  button.ghost { background:transparent; color:var(--brand); border:1px solid rgba(11,94,215,0.08); }
+  button.stop { background: var(--danger); }
+
+  .grid-2 { display:grid; grid-template-columns: 1fr 380px; gap:18px; }
+  @media (max-width: 920px) { .hero{grid-template-columns:1fr} .grid-2{grid-template-columns:1fr} .logo{width:40px;height:40px} }
+
+  .mood-row { display:flex; gap:8px; flex-wrap:wrap; margin-top:6px; }
+  .mood-btn { font-size:18px; padding:8px 12px; border-radius:8px; background:#f0f7ff; border:1px solid rgba(11,94,215,0.08); cursor:pointer; }
+
+  canvas { display:block; max-width:100%; margin-top:12px; }
+
+  /* breathing (box) circle */
+  #breathing-circle {
+    width:160px; height:160px; border-radius:999px; margin:12px auto;
+    background:linear-gradient(180deg,#80c0ff,#4aa6ff);
+    display:flex; align-items:center; justify-content:center; box-shadow:0 14px 40px rgba(0,96,200,0.12);
+    color:white; font-weight:700; text-align:center; padding:10px; font-size:16px;
+  }
+  #breath-count { text-align:center; margin-top:8px; font-weight:600; color:var(--brand); }
+  body.dark #breath-count { color: #fff; }
+
+  @keyframes breathe-scale { 0%{transform:scale(1)} 50%{transform:scale(1.45)} 100%{transform:scale(1)} }
+
+  .center { display:flex; align-items:center; justify-content:center; }
+
+  /* exercises layout */
+  .tools-grid { display:grid; grid-template-columns: repeat(auto-fit,minmax(260px,1fr)); gap:18px; margin-top:12px; }
+  .tool-card { padding:18px; border-radius:12px; background: linear-gradient(180deg,#fff,#fbfeff); border:1px solid rgba(11,94,215,0.04); transition: background 0.25s, color 0.25s; min-height:220px; display:flex; flex-direction:column; justify-content:flex-start; gap:10px; }
+  body.dark .tool-card { background: #071622; border:1px solid rgba(255,255,255,0.03); color:#ffffff; }
+
+  .tool-card h3 { margin:0; color:var(--brand); }
+  .tool-actions { display:flex; gap:8px; flex-wrap:wrap; }
+
+  /* sloth / stretch sloth */
+  .sloth-emoji { font-size:88px; text-align:center; line-height:1; }
+  .sloth-anim { transition: transform 1s ease; }
+
+  /* jokes/quiz */
+  .small { font-size:14px; color:var(--muted) }
+
+  /* info hub cards */
+  .info-grid { display:grid; grid-template-columns: repeat(auto-fit,minmax(260px,1fr)); gap:12px; margin-top:12px; }
+  .info-card { padding:12px; border-radius:10px; background:linear-gradient(180deg,#fff,#fbfeff); border:1px solid rgba(11,94,215,0.04); transition: background 0.25s, color 0.25s; }
+  body.dark .info-card { background:#071622; border:1px solid rgba(255,255,255,0.03); color:#ffffff; }
+
+  /* library list */
+  .library-list a { display:block; padding:8px 10px; border-radius:8px; text-decoration:none; color:var(--brand); background:rgba(11,94,215,0.04); margin-bottom:8px; }
+  body.dark .library-list a { background: rgba(255,255,255,0.03); color:#7ecbff; }
+
+  /* inspo feed */
+  .feed { max-height:240px; overflow:auto; border:1px solid #eef6ff; padding:8px; border-radius:8px; }
+  body.dark .feed { border:1px solid rgba(255,255,255,0.03); }
+
+  footer { margin:28px 0; text-align:center; color:var(--muted); transition: color 0.25s; }
+  body.dark footer { color:#9aa6bf; }
+
+  /* make sure text is very visible in dark mode */
+  body.dark, body.dark * { color: var(--text) !important; }
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">
+    <div class="logo">SS</div>
+    <div>
+      <div style="font-weight:800;color:var(--brand)">SafeSpace</div>
+      <div class="muted" style="font-size:12px">Student mental health — demo</div>
+    </div>
+  </div>
+
+  <nav>
+    <a href="#mood">Mood</a>
+    <a href="#tools">Tools</a>
+    <a href="#upload">Videos</a>
+    <a href="#quiz">Quiz</a>
+    <a href="#jokes">Jokes</a>
+    <a href="#chatbot">SafeBot</a>
+    <a href="#counselor">Counselor</a>
+    <a href="#library">Library</a>
+    <a href="#info">Info Hub</a>
+  </nav>
+
+  <div style="display:flex;align-items:center;gap:8px">
+    <button type="button" class="ghost" id="darkToggle">🌙 Dark</button>
+  </div>
+</header>
+
+<div class="container">
+  <div class="hero">
+    <div>
+      <h1>🌱 A Digital Friend for Your Mind — Track. Breathe. Heal. Share.</h1>
+      <p class="muted">Anonymous micro-journal, mood tracking, exercises, and a bot to help — all in your browser. Safe for demo.</p>
+      <div style="margin-top:10px">
+        <button type="button" onclick="document.getElementById('mood').scrollIntoView({behavior:'smooth'})">Log Mood</button>
+        <button type="button" onclick="document.getElementById('tools').scrollIntoView({behavior:'smooth'})" class="ghost">Try Tools</button>
+      </div>
+    </div>
+
+    <div style="background:var(--card);padding:14px;border-radius:10px;">
+      <strong>Quick overview</strong>
+      <p class="muted" id="quick-stats">No entries yet — log your first mood.</p>
+    </div>
+  </div>
+
+  <!-- MOOD -->
+  <section id="mood">
+    <h2>Daily Mood Check</h2>
+    <p class="muted">Answer these quick questions — it helps create a daily mood score and track trends.</p>
+
+    <div class="grid-2">
+      <div>
+        <div>
+          <label>1) Sleep quality</label>
+          <select id="q_sleep">
+            <option value="2">Very good</option>
+            <option value="1">Okay</option>
+            <option value="0">Poor</option>
+          </select>
+
+          <label style="margin-top:8px">2) Stress level</label>
+          <select id="q_stress">
+            <option value="0">Low</option>
+            <option value="1">Medium</option>
+            <option value="2">High</option>
+          </select>
+
+          <label style="margin-top:8px">3) Energy</label>
+          <select id="q_energy">
+            <option value="2">High</option>
+            <option value="1">Moderate</option>
+            <option value="0">Low</option>
+          </select>
+
+          <label style="margin-top:8px">4) Focus / concentration</label>
+          <select id="q_focus">
+            <option value="2">Good</option>
+            <option value="1">So-so</option>
+            <option value="0">Poor</option>
+          </select>
+
+          <label style="margin-top:8px">5) Appetite</label>
+          <select id="q_appetite">
+            <option value="2">Normal</option>
+            <option value="2.5">More eating</option>
+            <option value="1">Reduced</option>
+            <option value="0">No appetite</option>
+          </select>
+
+          <label style="margin-top:8px">6) Social desire</label>
+          <select id="q_social">
+            <option value="2">Want to be with others</option>
+            <option value="1">Maybe</option>
+            <option value="0">Prefer alone</option>
+          </select>
+
+          <label style="margin-top:8px">7) Anxiety level</label>
+          <select id="q_anxiety">
+            <option value="0">Low</option>
+            <option value="1">Some</option>
+            <option value="2">High</option>
+          </select>
+
+          <label style="margin-top:8px">8) Pick an emoji that matches your mood</label>
+          <div class="mood-row">
+            <button type="button" class="mood-btn" onclick="submitMoodWithAnswers('😊')">😊 Happy</button>
+            <button type="button" class="mood-btn" onclick="submitMoodWithAnswers('😐')">😐 Neutral</button>
+            <button type="button" class="mood-btn" onclick="submitMoodWithAnswers('😟')">😟 Stressed</button>
+            <button type="button" class="mood-btn" onclick="submitMoodWithAnswers('😢')">😢 Sad</button>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <h3>Recent entries</h3>
+        <pre id="mood-history" class="muted" style="white-space:pre-wrap; min-height:120px">No moods logged yet.</pre>
+
+        <h3 style="margin-top:12px">Mood Graph (daily average)</h3>
+        <canvas id="moodChart"></canvas>
+      </div>
+    </div>
+  </section>
+
+  <!-- TOOLS / Exercises -->
+  <section id="tools">
+    <h2>Wellness Tools & Exercises</h2>
+    <p class="muted">Use short exercises between classes.</p>
+
+    <div class="tools-grid">
+      <!-- Breathing (Box) -->
+      <div class="tool-card center">
+        <h3>Box Breathing (4-4-4-4)</h3>
+        <div id="breathing-circle" class="center">Ready</div>
+        <div id="breath-count" class="muted">4s</div>
+        <div class="tool-actions">
+          <button type="button" onclick="startBoxBreathing()">Start</button>
+          <button type="button" onclick="stopBoxBreathing()" class="stop">Stop</button>
+        </div>
+        <p class="small muted">Follow the circle text and 4-second timer. Inhale — Hold — Exhale — Hold.</p>
+      </div>
+
+      <!-- Grounding -->
+      <div class="tool-card">
+        <h3>Grounding (5-4-3-2-1)</h3>
+        <p class="muted">Quick sensory method to return to the present.</p>
+        <button type="button" onclick="startGrounding()">Guide me</button>
+        <label style="margin-top:8px">Write your grounding experience (what you saw/touched/heard):</label>
+        <textarea id="groundingNotes" rows="4" placeholder="I saw..., I touched..., I heard..."></textarea>
+        <div style="display:flex; gap:8px; margin-top:8px;">
+          <button type="button" onclick="saveGrounding()">Save Experience</button>
+          <button type="button" onclick="clearGrounding()">Clear</button>
+        </div>
+        <div style="margin-top:8px">
+          <strong class="muted">Saved experiences</strong>
+          <div id="groundingLog" class="muted" style="margin-top:6px; max-height:120px; overflow:auto;"></div>
+        </div>
+      </div>
+
+      <!-- Light Stretch with Sloth -->
+      <div class="tool-card center">
+        <h3>Light Stretch Routine</h3>
+        <p class="muted">Simple 2-minute stretch to relieve tension — follow slow 'sloth' movements.</p>
+        <div id="sloth" class="sloth-emoji sloth-anim">🦥</div>
+        <div style="display:flex; gap:8px; justify-content:center; margin-top:6px;">
+          <button type="button" onclick="startSlothStretch()">Start Sloth Stretch</button>
+          <button type="button" onclick="stopSlothStretch()" class="stop">Stop</button>
+        </div>
+        <p id="stretchStatus" class="muted" style="margin-top:6px"></p>
+      </div>
+
+      <!-- Guided Meditation -->
+      <div class="tool-card">
+        <h3>Guided Meditation</h3>
+        <p class="muted">Short guided relaxation (timer-based).</p>
+        <div style="display:flex; gap:8px;">
+          <button type="button" onclick="startMeditation(120)">Start 2-min</button>
+          <button type="button" onclick="stopMeditation()" class="stop">Stop</button>
+        </div>
+        <p id="medStatus" class="muted" style="margin-top:6px"></p>
+      </div>
+    </div>
+  </section>
+
+  <!-- VIDEO UPLOAD -->
+  <section id="upload">
+    <h2>Video Upload (preview)</h2>
+    <p class="muted">Upload a short inspirational or reflective clip (preview only — demo local).</p>
+    <input type="file" id="videoUpload" accept="video/*">
+    <div id="videoArea"></div>
+  </section>
+
+  <!-- LIBRARY (PDFs) -->
+  <section id="library">
+    <h2>Library — Books & Novels (User accessible)</h2>
+    <p class="muted">Admins can upload PDFs which will appear here for users to view/download.</p>
+    <div class="library-list" id="pdfList">No books uploaded yet.</div>
+  </section>
+
+  <!-- UPLOAD / ADMIN (PDFs) -->
+  <section id="admin" style="margin-top:14px;">
+    <h2>Admin — Upload PDFs</h2>
+    <p class="muted">Upload PDFs of books/novels (stored locally in this demo).</p>
+    <input type="file" id="pdfUpload" accept="application/pdf">
+    <div style="margin-top:8px">
+      <button type="button" onclick="uploadPDF()">Upload PDF</button>
+      <button type="button" onclick="clearPDFs()" class="ghost">Clear Library</button>
+    </div>
+  </section>
+
+  <!-- QUIZ -->
+  <section id="quiz">
+    <h2>Quick Condition Quiz</h2>
+    <p class="muted">Answer honestly — results suggest which site features may help you.</p>
+
+    <label>1) In the past 2 weeks, how often have you felt down?</label>
+    <select id="qz1"><option>Not at all</option><option>Several days</option><option>More than half the days</option></select>
+
+    <label>2) How often have you had trouble sleeping?</label>
+    <select id="qz2"><option>Rarely</option><option>Sometimes</option><option>Often</option></select>
+
+    <label>3) How often do you feel anxious or panicky?</label>
+    <select id="qz3"><option>Rarely</option><option>Sometimes</option><option>Often</option></select>
+
+    <label>4) Do you withdraw from friends?</label>
+    <select id="qz4"><option>No</option><option>Somewhat</option><option>Yes</option></select>
+
+    <label>5) Do you have trouble concentrating?</label>
+    <select id="qz5"><option>No</option><option>Sometimes</option><option>Yes</option></select>
+
+    <label>6) Do you feel overwhelmed by coursework?</label>
+    <select id="qz6"><option>No</option><option>Sometimes</option><option>Yes</option></select>
+
+    <div style="margin-top:10px">
+      <button type="button" onclick="submitQuiz()">Submit Quiz</button>
+    </div>
+
+    <div id="quizResult" style="margin-top:12px"></div>
+  </section>
+
+  <!-- JOKES -->
+  <section id="jokes">
+    <h2>Light Jokes & Lifts</h2>
+    <p id="jokeText" class="muted">Press button for a light joke.</p>
+    <button type="button" onclick="showJoke()">Tell me a joke</button>
+  </section>
+
+  <!-- CHATBOT -->
+  <section id="chatbot">
+    <h2>SafeBot 🤖</h2>
+    <p class="muted">A friendly rule-based helper — not a replacement for professionals.</p>
+    <div id="messages" style="height:180px; overflow:auto; border:1px solid rgba(11,94,215,0.06); padding:8px; border-radius:8px; background:linear-gradient(180deg,#fbfeff,#fff)"></div>
+    <div style="display:flex; gap:8px; margin-top:8px;">
+      <input type="text" id="userInput" placeholder="Write to SafeBot..." />
+      <button type="button" onclick="sendMessage()">Send</button>
+    </div>
+  </section>
+
+  <!-- COUNSELOR -->
+  <section id="counselor">
+    <h2>Message a Counselor (demo)</h2>
+    <p class="muted">Your message is stored locally in this demo. In production it would go to counselors.</p>
+    <textarea id="counselorMsg" rows="4" placeholder="Write to a counselor..."></textarea>
+    <div style="margin-top:8px;">
+      <button type="button" onclick="sendCounselor()">Send Message</button>
+      <span id="counselorStatus" class="muted" style="margin-left:10px"></span>
+    </div>
+  </section>
+
+  <!-- INFO HUB -->
+  <section id="info">
+    <h2>Information Hub — Understand & Manage</h2>
+    <p class="muted">Concise, student-friendly guidance for common conditions and practical coping steps.</p>
+
+    <div class="info-grid">
+      <div class="info-card">
+        <h3>Depression</h3>
+        <p class="muted"><strong>What:</strong> Persistent low mood, loss of interest, low energy, sleep/appetite changes.</p>
+        <p class="muted"><strong>Practical steps:</strong> Keep small daily goals, keep a simple routine, try brief walks and sunlight, connect with someone you trust, consider counseling or student health. If you have thoughts of self-harm, seek emergency help immediately.</p>
+      </div>
+
+      <div class="info-card">
+        <h3>Anxiety</h3>
+        <p class="muted"><strong>What:</strong> Excessive worry, restlessness, muscle tension, sleep issues.</p>
+        <p class="muted"><strong>Practical steps:</strong> Use breathing exercises (in-out), practice grounding (5-4-3-2-1), limit stimulants (caffeine), break tasks into smaller steps, talk to peers or counselor.</p>
+      </div>
+
+      <div class="info-card">
+        <h3>Panic Attacks</h3>
+        <p class="muted"><strong>What:</strong> Sudden intense fear with physical symptoms (racing heart, breathlessness).</p>
+        <p class="muted"><strong>Quick help:</strong> Sit, loosen clothing, slow exhale breathing (4s in, 6s out), grounding technique, remind yourself it will pass. Seek professional help if repeated.</p>
+      </div>
+
+      <div class="info-card">
+        <h3>Stress Management</h3>
+        <p class="muted"><strong>What:</strong> Feeling overwhelmed by demands (study, deadlines, personal issues).</p>
+        <p class="muted"><strong>Practical steps:</strong> Prioritize tasks, use short breaks, try a 5–10 minute relaxation, use campus resources and talk to mentors.</p>
+      </div>
+
+      <div class="info-card">
+        <h3>Where to Seek Help</h3>
+        <p class="muted">University counseling center, student health services, trusted faculty/mentor, emergency services if at risk. Consider hotlines and crisis lines in your country.</p>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<footer>
+  <div class="muted">© 2025 SafeSpace — Demo prototype. Not a replacement for professional care.</div>
+</footer>
+
+<script>
+/* ----------------------------
+   Full script merged & updated
+   ---------------------------- */
+
+/* ---------- Wrap - DOM ready ---------- */
+window.addEventListener('load', function(){
+
+  /* ---------- Storage & seed ---------- */
+  const MOOD_KEY = 'safespace_moods_v3';
+  let moods = JSON.parse(localStorage.getItem(MOOD_KEY) || '[]');
+
+  if(moods.length === 0){
+    const today = new Date()
